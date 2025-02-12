@@ -1,0 +1,31 @@
+# Configurer les paramètres de connexion
+$siteURL = "https://mndgroupe.sharepoint.com/sites/DSI"
+$sharePointFolder = "05 Infra et matriel/03. Téléphonie" # définition du répertoire de dépot (créé automatiquement par le script si besoin)
+$localFolderPath = "C:\Users\RBRESSY\OneDrive - MND\Bureau\Test Annuaires\Annuaires" # C'est le contenu du répertoire qui est envoyé
+$logFile = "C:\temp\copieSP.log"  # Chemin du fichier log
+
+# Fonction pour écrire dans le fichier de log
+function Write-Log {
+    param (
+        [string]$Message
+    )
+    Add-Content -Path $logFile -Value "$(Get-Date -Format "yyyy-MM-dd HH:mm:ss") - $Message"
+}
+
+# Connexion au site SharePoint avec authentification interactive
+Connect-PnPOnline -Url $siteURL -Interactive -ClientId [client-id à mettre ici]
+Write-Log "Connected to $siteURL"
+
+
+# Copier chaque fichier du dossier local vers SharePoint
+Get-ChildItem -Path $localFolderPath -File | ForEach-Object {
+    $fileToUpload = $_.FullName
+    Add-PnPFile -Path $fileToUpload -Folder $sharePointFolder
+    Write-Log "Fichier copié : $($_.Name) → $sharePointFolder"
+}
+
+
+
+# Déconnexion
+Disconnect-PnPOnline
+Write-Log "Disconnected from $siteURL"
