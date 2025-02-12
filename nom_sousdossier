@@ -1,0 +1,28 @@
+# Ce script sort absolument tous les repertoires et fichiers inférieurs à celui racine, faire un ctrl + f après pour trouver le vrai nom des sous dossiers
+
+# Configurer les paramètres de connexion
+$siteURL = "https://mndgroupe.sharepoint.com/sites/nomSite"
+$logFile = "C:\temp\fichier.log"  # Chemin du fichier log
+$LibraryName = ""  # Nom du repertoire racine du site à fouiller"
+$SubFolderPath = "/sites/nomSite/repertoireRacine"  # Le chemin absolu du dossier
+
+# Connexion à SharePoint
+Try {
+    Connect-PnPOnline -Url $siteURL -Interactive -ClientId [id-client à mettre ici]
+    Write-Output "✅ Connecté à $siteURL"
+}
+Catch {
+    Write-Output "❌ Erreur de connexion à SharePoint"
+    Exit
+}
+
+# Récupérer les éléments dans la bibliothèque
+$items = Get-PnPListItem -List $LibraryName -Fields "FileLeafRef", "FileDirRef", "FileSystemObjectType"
+$items | ForEach-Object { Write-Output ($_ | Format-List * | Out-String) }
+
+
+# Vérifier si des éléments ont été récupérés
+If ($items.Count -eq 0) {
+    Write-Output "❌ Aucun élément trouvé dans la bibliothèque '$LibraryName'"
+    Exit
+}
