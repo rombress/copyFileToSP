@@ -1,0 +1,62 @@
+# AIDE : Pour récupérer les noms des librairies utilisées par sharepoint (certains caractères sont modifiés par sharepoint)
+#Get-PnPList
+
+# Configurer les paramètres de connexion
+$siteURL = "https://mndgroupe.sharepoint.com/sites/DSI"
+$libraryName = "05 Infra et matriel/03 Téléphonie" # définition du répertoire de dépot (créé automatiquement par le script si besoin)
+$localFolderPath = "C:\Users\RBRESSY\OneDrive - MND\Bureau\Test Annuaires\Annuaires" # C'est le contenu du répertoire qui est envoyé
+$logFile = "C:\temp\copieSP.log"  # Chemin du fichier log
+
+# Fonction pour écrire dans le fichier de log
+function Write-Log {
+    param (
+        [string]$Message
+    )
+    Add-Content -Path $logFile -Value "$(Get-Date -Format "yyyy-MM-dd HH:mm:ss") - $Message"
+}
+
+# Connexion au site SharePoint avec authentification interactive
+Connect-PnPOnline -Url $siteURL -Interactive -ClientId [client-id]
+
+
+# Fonction pour copier récursivement un dossier et ses sous-dossiers
+function Copy-FolderToSharePoint {
+    param (
+        [string]$localFolder,
+        [string]$sharePointFolder
+    )
+    
+    # Créer le dossier sur SharePoint si nécessaire
+    $folderExists = Get-PnPFolder -Url $sharePointFolder -ErrorAction SilentlyContinue
+    if (-not $folderExists) {
+        Add-PnPFolder -Name (Split-Path -Path $sharePointFolder -Leaf) -Folder (Split-Path -Path $sharePointFolder -Parent) -ErrorAction SilentlyContinue
+        Write-Log "Created folder $sharePointFolder on SharePoint"
+    }
+
+    # Copier chaque fichier dans le dossier courant
+    Get-ChildItem -Path $localFolder -File | ForEach-Object {
+        try {
+            $fileToUpload = $_.FullName
+            $destinationPath = "$sharePointFolder/$($_.Name)"
+            Add-PnPFile -Path $fileToUpload -Folder $sharePointFolder
+            Write-Log "Uploaded '$fileToUpload' to '$destinationPath'"
+        } catch {
+            Write-Log "Error uploading '$fileToUpload': $($_.Exception.Message)"
+        }
+    }
+
+    # Copier récursivement les sous-dossiers
+    Get-ChildItem -Path $localFolder -Directory | ForEach-Object {
+        $newLocalFolder = $_.FullName
+        $newSharePointFolder = "$sharePointFolder/$($_.Name)"
+        Copy-FolderToSharePoint -localFolder $newLocalFolder -sharePointFolder $newSharePointFolder
+    }
+}
+
+# Démarrer la copie du dossier vers SharePoint
+Copy-FolderToSharePoint -localFolder $localFolderPath -sharePointFolder $libraryName
+
+# Déconnexion
+Disconnect-PnPOnline
+Write-Log "Disconnected from $siteURL"
+
